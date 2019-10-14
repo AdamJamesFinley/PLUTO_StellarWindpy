@@ -26,7 +26,7 @@ PLUTO stellar wind simulation visualisation tools and analysis scripts.
 Features
 --------
 
-* TODO
+* Load outputs from the PLUTO MHD code into python for manipulation and plotting.
 
 Credits
 -------
