@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
-
+import time
+import os
+import sys
+import pyPLUTO as pp
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 """Main module."""
 #================ CLASS DECLARATION ====================
 class StellarWindData:
@@ -244,10 +251,10 @@ class StellarWindData:
 		'''
 		plt.clf()
 		if self.dimensions == 2:
-			plt.scatter(self.thGrid,self.omegaEff,c=self.omegaEff, cmap=Balance_20.mpl_colormap,vmin=0.5, vmax=1.5,s=0.1)
+			plt.scatter(self.thGrid,self.omegaEff,c=self.omegaEff, cmap='seismic',vmin=0.5, vmax=1.5,s=0.1)
 		if self.dimensions == 3:
 			if averaged==True:
-				plt.scatter(np.mean(self.thGrid,axis=2),np.mean(self.omegaEff,axis=2),c=np.mean(self.omegaEff,axis=2), cmap=Balance_20.mpl_colormap,vmin=0.5, vmax=1.5,s=0.1)
+				plt.scatter(np.mean(self.thGrid,axis=2),np.mean(self.omegaEff,axis=2),c=np.mean(self.omegaEff,axis=2), cmap='seismic',vmin=0.5, vmax=1.5,s=0.1)
 			else:
 				if all==True:
 					if smoothed == True:
@@ -274,7 +281,7 @@ class StellarWindData:
 							plt.scatter(self.thGrid[:,:,int(len(self.phiCoord)*7./8.+slice)],self.omegaEff[:,:,int(len(self.phiCoord)*7./8.+slice)],cmap='jet',c=self.phiGrid[:,:,int(len(self.phiCoord)*7./8.+slice)],s=0.1,alpha=0.6,vmin=0,vmax=2.*np.pi)
 					plt.colorbar(label=r'$\phi Slice$')
 				else:
-					plt.scatter(self.thGrid[:,:,slice],self.omegaEff[:,:,slice],c=self.omegaEff[:,:,slice], cmap=Balance_20.mpl_colormap,vmin=0.5, vmax=1.5,s=0.1)
+					plt.scatter(self.thGrid[:,:,slice],self.omegaEff[:,:,slice],c=self.omegaEff[:,:,slice], cmap='seismic',vmin=0.5, vmax=1.5,s=0.1)
 		plt.ylabel(r'$\Omega_{eff}/\Omega_*$')
 		if averaged==True:
 			plt.ylabel(r'$\langle\Omega_{eff}/\Omega_*\rangle_{\phi}$')
@@ -325,9 +332,9 @@ class StellarWindData:
 		fig, ax = plt.subplots(figsize=[10,10])
 		#Plot Colormap
 		if self.dimensions == 2:
-			plt.pcolormesh(self.xGrid,self.yGrid,self.omegaEff, cmap=Balance_20.mpl_colormap)
+			plt.pcolormesh(self.xGrid,self.yGrid,self.omegaEff, cmap='seismic')
 		if self.dimensions == 3:
-			plt.pcolormesh(self.xGrid[:,:,slice],self.yGrid[:,:,slice],self.omegaEff[:,:,slice], cmap=Balance_20.mpl_colormap)
+			plt.pcolormesh(self.xGrid[:,:,slice],self.yGrid[:,:,slice],self.omegaEff[:,:,slice], cmap='seismic')
 		plt.colorbar(label=r'$\Omega_{eff}/\Omega_*$')
 		plt.clim(0.5,1.5)
 		ax.set_ylabel('Stellar Radii')
@@ -375,7 +382,7 @@ class StellarWindData:
 			plt.loglog()
 		plt.show()
 
-	def plotSurface(self,variable,vmin=False,vmax=False,slice=0,label='',cmap=Balance_20.mpl_colormap):
+	def plotSurface(self,variable,vmin=False,vmax=False,slice=0,label='',cmap='seismic'):
 		'''
 		Plots a quantity on a radial surface.
 		'''
@@ -491,8 +498,228 @@ class StellarWindData:
 # DIPOLE.calcOmegaEff()
 
 #Plotting Functions
-# DIPOLE.plotColormap(variable='zGrid',label='Radial Magnetic Field',cmap=Balance_20.mpl_colormap,coneAngle=0.1,slice=0)
+# DIPOLE.plotColormap(variable='zGrid',label='Radial Magnetic Field',cmap='seismic',coneAngle=0.1,slice=0)
 # DIPOLE.plotOmegaEffective()
 # DIPOLE.plotStreamFunction()
 # DIPOLE.plotOutputFig()
 # DIPOLE.plotRadialFunction('jdotVsRadius',ylabel=r'$\int_{A}(\Lambda\rho v_r)dA$')
+
+def plotComparison(plotArray,variable,vmin=False,vmax=False,label='',cmap='jet',zoom=20.,slice=0,surfaces=False,savefig=False):
+	'''
+	Compares an array of datasets, using an input variable. Surfaces requires calcWindProperties().
+	'''
+	plt.clf()
+	n=0
+	if vmin == False and vmax == False:
+		for plot in plotArray:
+			vmin_n = np.min(getattr(plot, variable))
+			if vmin_n < vmin:
+				vmin = vmin_n
+			vmax_n = np.max(getattr(plot, variable))
+			if vmax_n > vmax:
+				vmax = vmax_n
+	fig, axarr = plt.subplots(1,len(plotArray),figsize=[8*len(plotArray),7],sharey=True)
+	for plot in plotArray:
+		#Plot Colormap
+		if plot.dimensions == 2:
+			C = axarr[n].pcolormesh(plot.xGrid,plot.yGrid,getattr(plot, variable), cmap=cmap, vmin=vmin, vmax=vmax)
+		if plot.dimensions == 3:
+			C = axarr[n].pcolormesh(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.),plot.yGrid[:,:,slice],getattr(plot, variable)[:,:,slice], cmap=cmap, vmin=vmin, vmax=vmax)
+			axarr[n].pcolormesh(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.),plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)],getattr(plot, variable)[:,:,int(len(plot.phiCoord)/2.+slice)], cmap=cmap, vmin=vmin, vmax=vmax)
+		axarr[n].set_ylabel('Stellar Radii')
+		axarr[n].set_xlabel('Stellar Radii')
+		axarr[n].set_ylim(-zoom,zoom)
+		axarr[n].set_xlim(-zoom,zoom)
+		axarr[n].set_aspect('equal')
+		if surfaces == True:
+			#Plot Sonic and Alfv\'en Surfaces
+			if plot.dimensions == 2:
+				Sound = axarr[n].contour(plot.xGrid, plot.yGrid, plot.Mach, [1], linewidths=2, colors='black')
+				Alfven = axarr[n].contour(plot.xGrid, plot.yGrid, plot.MachB, [1], linewidths=2, colors='blue')
+			if plot.dimensions == 3:
+				Sound = axarr[n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.Mach[:,:,slice], [1], linewidths=2, colors='black')
+				Alfven = axarr[n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.MachB[:,:,slice], [1], linewidths=2, colors='blue')
+				axarr[n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.Mach[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='black')
+				axarr[n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.MachB[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='blue')
+			#Indicate Average Alfv\'en Radius
+			axarr[n].axvline(x=plot.AlfvRad, color='grey', ls='--', lw=2)
+			axarr[n].axvline(x=-plot.AlfvRad, color='grey', ls='--', lw=2)
+		#Draw The Star
+		circle1 = plt.Circle((0, 0), 1.0, color='orange')
+		axarr[n].add_artist(circle1)
+		n = n+1
+	fig.subplots_adjust(wspace=0.1,hspace=0,right=0.8,top=0.95,bottom=0.15)
+	divider = make_axes_locatable(axarr[n-1])
+	cax = divider.append_axes("right", size="2%", pad=0.05)
+	plt.colorbar(C,label=label,cax=cax)
+	# cbar_ax = fig.add_axes([0.82, 0.15, 0.03, 0.8])
+	# fig.colorbar(C, cax=cbar_ax, label=label)
+	if savefig == False:
+		plt.show()
+	else:
+		plt.savefig('/Users/afinley/Desktop/'+str(savefig)+'.pdf')
+
+
+def plotPaperFig1(plotArrayLB,plotArrayHB,variable,vmin=False,vmax=False,label='',cmap='jet',zoom=20.,slice=0,surfaces=False,savefig=False):
+	'''
+	Compares an array of datasets, using an input variable. Surfaces requires calcWindProperties().
+	'''
+	ppt=pp.Tools()
+	plt.clf()
+	n=0
+	if vmin == False and vmax == False:
+		for plot in plotArrayHB:
+			vmin_n = np.min(getattr(plot, variable))
+			if vmin_n < vmin:
+				vmin = vmin_n
+			vmax_n = np.max(getattr(plot, variable))
+			if vmax_n > vmax:
+				vmax = vmax_n
+	fig, axarr = plt.subplots(2,len(plotArrayLB),figsize=[6*len(plotArrayLB),12.3],sharey=True)
+	for plot in plotArrayLB:
+		#Plot Colormap
+		if plot.dimensions == 2:
+			C = axarr[0,n].pcolormesh(plot.xGrid,plot.yGrid,getattr(plot, variable), cmap=cmap, vmin=vmin, vmax=vmax)
+		if plot.dimensions == 3:
+			C = axarr[0,n].pcolormesh(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.),plot.yGrid[:,:,slice],getattr(plot, variable)[:,:,slice], cmap=cmap, vmin=vmin, vmax=vmax)
+			axarr[0,n].pcolormesh(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.),plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)],getattr(plot, variable)[:,:,int(len(plot.phiCoord)/2.+slice)], cmap=cmap, vmin=vmin, vmax=vmax)
+		axarr[0,n].set_ylim(-zoom,zoom)
+		axarr[0,n].set_xlim(-zoom,zoom)
+		axarr[0,n].set_aspect('equal')
+		if surfaces == True:
+			#Plot Sonic and Alfv\'en Surfaces
+			if plot.dimensions == 2:
+				Sound = axarr[0,n].contour(plot.xGrid, plot.yGrid, plot.Mach, [1], linewidths=2, colors='magenta')
+				Alfven = axarr[0,n].contour(plot.xGrid, plot.yGrid, plot.MachB, [1], linewidths=2, colors='cyan')
+			if plot.dimensions == 3:
+				Sound = axarr[0,n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.Mach[:,:,slice], [1], linewidths=2, colors='magenta')
+				Alfven = axarr[0,n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.MachB[:,:,slice], [1], linewidths=2, colors='cyan')
+				# axarr[0,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.VphiRF[:,:,int(len(plot.phiCoord)/2.+slice)], 30, linewidths=1, colors='white')
+				axarr[0,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.Mach[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='magenta')
+				axarr[0,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.MachB[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='cyan')
+			#Indicate Average Alfv\'en Radius
+			axarr[0,n].axvline(x=plot.AlfvRad, color='grey', ls='--', lw=2)
+			axarr[0,n].axvline(x=-plot.AlfvRad, color='grey', ls='--', lw=2)
+		#Draw The Star
+		circle1 = plt.Circle((0, 0), 1.0, color='orange')
+		axarr[0,n].add_artist(circle1)
+
+		# newdims = 2*(20,)
+		# xcong = ppt.congrid(plot.arrowR,newdims,method='linear')
+		# ycong = ppt.congrid(plot.arrowZ,newdims,method='linear')
+		# velxcong = ppt.congrid(plot.arrowVr,newdims,method='linear')
+		# velycong = ppt.congrid(plot.arrowVth,newdims,method='linear')
+		# axarr[0,n].quiver(xcong, ycong, velxcong, velycong,color='k')
+
+		n = n+1
+	n=0
+	for plot in plotArrayHB:
+		#Plot Colormap
+		if plot.dimensions == 2:
+			C = axarr[1,n].pcolormesh(plot.xGrid,plot.yGrid,getattr(plot, variable), cmap=cmap, vmin=vmin, vmax=vmax)
+		if plot.dimensions == 3:
+			C = axarr[1,n].pcolormesh(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.),plot.yGrid[:,:,slice],getattr(plot, variable)[:,:,slice], cmap=cmap, vmin=vmin, vmax=vmax)
+			axarr[1,n].pcolormesh(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.),plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)],getattr(plot, variable)[:,:,int(len(plot.phiCoord)/2.+slice)], cmap=cmap, vmin=vmin, vmax=vmax)
+		axarr[1,n].set_ylim(-zoom,zoom)
+		axarr[1,n].set_xlim(-zoom,zoom)
+		axarr[1,n].set_aspect('equal')
+		if surfaces == True:
+			#Plot Sonic and Alfv\'en Surfaces
+			if plot.dimensions == 2:
+				Sound = axarr[1,n].contour(plot.xGrid, plot.yGrid, plot.Mach, [1], linewidths=2, colors='magenta')
+				Alfven = axarr[1,n].contour(plot.xGrid, plot.yGrid, plot.MachB, [1], linewidths=2, colors='cyan')
+			if plot.dimensions == 3:
+				Sound = axarr[1,n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.Mach[:,:,slice], [1], linewidths=2, colors='magenta')
+				Alfven = axarr[1,n].contour(np.sqrt(plot.xGrid[:,:,slice]**2.+plot.zGrid[:,:,slice]**2.), plot.yGrid[:,:,slice], plot.MachB[:,:,slice], [1], linewidths=2, colors='cyan')
+				# axarr[1,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.VphiRF[:,:,int(len(plot.phiCoord)/2.+slice)], 30, linewidths=1, colors='white')
+				axarr[1,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.Mach[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='magenta')
+				axarr[1,n].contour(-np.sqrt(plot.xGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.+plot.zGrid[:,:,int(len(plot.phiCoord)/2.+slice)]**2.), plot.yGrid[:,:,int(len(plot.phiCoord)/2.+slice)], plot.MachB[:,:,int(len(plot.phiCoord)/2.+slice)], [1], linewidths=2, colors='cyan')
+			#Indicate Average Alfv\'en Radius
+			axarr[1,n].axvline(x=plot.AlfvRad, color='grey', ls='--', lw=2)
+			axarr[1,n].axvline(x=-plot.AlfvRad, color='grey', ls='--', lw=2)
+		#Draw The Star
+		circle1 = plt.Circle((0, 0), 1.0, color='orange')
+		axarr[1,n].add_artist(circle1)
+
+		# newdims = 2*(20,)
+		# xcong = ppt.congrid(plot.arrowR,newdims,method='linear')
+		# ycong = ppt.congrid(plot.arrowZ,newdims,method='linear')
+		# velxcong = ppt.congrid(plot.arrowVr,newdims,method='linear')
+		# velycong = ppt.congrid(plot.arrowVth,newdims,method='linear')
+		# axarr[1,n].quiver(xcong, ycong, velxcong, velycong,color='k')
+
+		n = n+1
+	axarr[0,0].set_ylabel('Stellar Radii')
+	axarr[1,0].set_ylabel('Stellar Radii')
+	axarr[1,0].set_xlabel('Stellar Radii')
+	axarr[1,1].set_xlabel('Stellar Radii')
+	axarr[1,2].set_xlabel('Stellar Radii')
+	axarr[1,3].set_xlabel('Stellar Radii')
+	yticklabels = axarr[1,1].get_yticklabels() + axarr[1,2].get_yticklabels() + axarr[1,3].get_yticklabels() +axarr[0,1].get_yticklabels() + axarr[0,2].get_yticklabels() + axarr[0,3].get_yticklabels()
+	plt.setp(yticklabels, visible=False)
+	xticklabels = axarr[0,0].get_xticklabels() + axarr[0,1].get_xticklabels() + axarr[0,2].get_xticklabels() + axarr[0,3].get_xticklabels()
+	plt.setp(xticklabels, visible=False)
+	plt.setp(axarr[1,1].get_xticklabels()[0], visible=False)
+	plt.setp(axarr[1,2].get_xticklabels()[0], visible=False)
+	plt.setp(axarr[1,3].get_xticklabels()[0], visible=False)
+
+	plt.setp(axarr[0,0].get_yticklabels()[0], visible=False)
+	fig.subplots_adjust(wspace=0.0,hspace=0)
+	cax = fig.add_axes([0.12, 0.07, 0.79, 0.01])
+	# make_axes_locatable(axarr[1,n-1]).append_axes("right", size="2%", pad=0.05)
+	plt.colorbar(C,label=label,cax=cax,orientation='horizontal')
+	if savefig == False:
+		plt.show()
+	else:
+		plt.savefig('/Users/afinley/Desktop/'+str(savefig)+'.pdf')
+
+
+def plotSlices(dataset,variable,vmin=False,vmax=False,label='',cmap='jet',zoom=20.,surfaces=False,slices=[0,0],savefig=False):
+	'''
+	Compares slices of datasets, using an input variable. Surfaces requires calcWindProperties().
+	'''
+	plt.clf()
+	n=0
+	if vmin == False and vmax == False:
+		vmin_n = np.min(getattr(dataset, variable))
+		if vmin_n < vmin:
+			vmin = vmin_n
+		vmax_n = np.max(getattr(dataset, variable))
+		if vmax_n > vmax:
+			vmax = vmax_n
+	fig, axarr = plt.subplots(1,len(slices),figsize=[8*len(slices),7],sharey=True)
+	for slice in slices:
+		C = axarr[n].pcolormesh(np.sqrt(dataset.xGrid[:,:,slice]**2.+dataset.zGrid[:,:,slice]**2.),dataset.yGrid[:,:,slice],getattr(dataset, variable)[:,:,slice], cmap=cmap, vmin=vmin, vmax=vmax)
+		axarr[n].pcolormesh(-np.sqrt(dataset.xGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.+dataset.zGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.),dataset.yGrid[:,:,int(len(dataset.phiCoord)/2.+slice)],getattr(dataset, variable)[:,:,int(len(dataset.phiCoord)/2.+slice)], cmap=cmap, vmin=vmin, vmax=vmax)
+		axarr[n].set_ylabel('Stellar Radii')
+		axarr[n].set_xlabel('Stellar Radii')
+		axarr[n].set_ylim(-zoom,zoom)
+		axarr[n].set_xlim(-zoom,zoom)
+		axarr[n].set_aspect('equal')
+		if surfaces == True:
+			#Plot Sonic and Alfv\'en Surfaces
+			if dataset.dimensions == 2:
+				Sound = axarr[n].contour(dataset.xGrid, dataset.yGrid, dataset.Mach, [1], linewidths=2, colors='black')
+				Alfven = axarr[n].contour(dataset.xGrid, dataset.yGrid, dataset.MachB, [1], linewidths=2, colors='blue')
+			if dataset.dimensions == 3:
+				Sound = axarr[n].contour(np.sqrt(dataset.xGrid[:,:,slice]**2.+dataset.zGrid[:,:,slice]**2.), dataset.yGrid[:,:,slice], dataset.Mach[:,:,slice], [1], linewidths=2, colors='black')
+				Alfven = axarr[n].contour(np.sqrt(dataset.xGrid[:,:,slice]**2.+dataset.zGrid[:,:,slice]**2.), dataset.yGrid[:,:,slice], dataset.MachB[:,:,slice], [1], linewidths=2, colors='blue')
+				axarr[n].contour(-np.sqrt(dataset.xGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.+dataset.zGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.), dataset.yGrid[:,:,int(len(dataset.phiCoord)/2.+slice)], dataset.Mach[:,:,int(len(dataset.phiCoord)/2.+slice)], [1], linewidths=2, colors='black')
+				axarr[n].contour(-np.sqrt(dataset.xGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.+dataset.zGrid[:,:,int(len(dataset.phiCoord)/2.+slice)]**2.), dataset.yGrid[:,:,int(len(dataset.phiCoord)/2.+slice)], dataset.MachB[:,:,int(len(dataset.phiCoord)/2.+slice)], [1], linewidths=2, colors='blue')
+			#Indicate Average Alfv\'en Radius
+			axarr[n].axvline(x=dataset.AlfvRad, color='grey', ls='--', lw=2)
+			axarr[n].axvline(x=-dataset.AlfvRad, color='grey', ls='--', lw=2)
+		#Draw The Star
+		circle1 = plt.Circle((0, 0), 1.0, color='orange')
+		axarr[n].add_artist(circle1)
+		n = n+1
+	fig.subplots_adjust(wspace=0.1,hspace=0,right=0.8,top=0.95,bottom=0.15)
+	divider = make_axes_locatable(axarr[n-1])
+	cax = divider.append_axes("right", size="2%", pad=0.05)
+	plt.colorbar(C,label=label,cax=cax)
+	# cbar_ax = fig.add_axes([0.82, 0.15, 0.03, 0.8])
+	# fig.colorbar(C, cax=cbar_ax, label=label)
+	if savefig == False:
+		plt.show()
+	else:
+		plt.savefig('/Users/afinley/Desktop/'+str(savefig)+'.pdf')

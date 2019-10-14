@@ -20,7 +20,7 @@ test_requirements = [ ]
 setup(
     author="Adam James Finley",
     author_email='af472@exeter.ac.uk',
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
+    python_requires='!=2.7, >=3.0., !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
